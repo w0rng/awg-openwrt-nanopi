@@ -1,5 +1,4 @@
 name: Create Release on Tag
-# on: [workflow_dispatch]
 on:
   push:
     tags:
@@ -12,27 +11,17 @@ jobs:
     strategy:
       matrix:
         build_env:
-          - tag: "22.03.4"
-            pkgarch: mips_24kc
-            target: ath79
-            subtarget: nand
-            vermagic: "5c9be91b90bda5403fe3a7c4e8ddb26f"
-          - tag: "23.05.0"
-            pkgarch: mipsel_24kc
-            target: ramips
-            subtarget: mt7621
-            vermagic: "9c242f353867f49a96054ff8c9f2c460"
-          - tag: "23.05.2"
-            pkgarch: mipsel_24kc
-            target: ramips
-            subtarget: mt7621
-            vermagic: "9c242f353867f49a96054ff8c9f2c460"
+          - tag: "23.05.3"
+            pkgarch: aarch64_generic
+            target: rockchip
+            subtarget: armv8
+            vermagic: "977ff8b00cefc97005d79b567519e03d"
 
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: openwrt/openwrt
-          ref: v${{ matrix.build_env.tag }}
+          repository: friendlyarm/friendlywrt
+          ref: master-v23.05
           fetch-depth: 0
 
       - name: Cache Tools and Kernel
@@ -47,17 +36,16 @@ jobs:
             ${{ runner.os }}-build-vm4-cache-tools-kernel-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-
 
       - name: Building kernel and tools
-        #if: ${{ steps.cache-tools-kernel.outputs.cache-hit != 'true' }}
         run: |
           echo "pkgarch: ${{ matrix.build_env.pkgarch}}, target:${{ matrix.build_env.target}}, subtarget: ${{ matrix.build_env.subtarget}}"
 
           # Setup & install feeds
-          wget https://downloads.openwrt.org/releases/${{ matrix.build_env.tag }}/targets/${{ matrix.build_env.target}}/${{ matrix.build_env.subtarget}}/feeds.buildinfo -O feeds.conf
-          echo "src-git awgopenwrt https://github.com/yury-sannikov/awg-openwrt.git" >> ./feeds.conf
-          ./scripts/feeds update && ./scripts/feeds install -a
+          cp feeds.conf.default feeds.conf
+          echo "src-git awgopenwrt https://github.com/w0rng/awg-openwrt.git" >> ./feeds.conf
+          ./scripts/feeds update -a && ./scripts/feeds install -a
 
           # Setup config with AWG and dependencies
-          wget https://downloads.openwrt.org/releases/${{ matrix.build_env.tag }}/targets/${{ matrix.build_env.target}}/${{ matrix.build_env.subtarget}}/config.buildinfo -O .config
+          wget https://raw.githubusercontent.com/w0rng/awg-openwrt/master/config.buildinfo -O .config
           echo "CONFIG_PACKAGE_kmod-amneziawg=m" >> .config
           echo "CONFIG_PACKAGE_amneziawg-tools=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-amneziawg=y" >> .config
@@ -124,4 +112,3 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: awgrelease/*.ipk
-
